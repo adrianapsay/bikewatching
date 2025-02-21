@@ -11,10 +11,22 @@
    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
 </head>
 <body>
-  <h1>🚴🏼‍♀️ Bikewatching</h1>
-  <div id="map"></div>
+    <header>
+        <h1>🚴🏼‍♀️ Bikewatching</h1>
+        <label>
+            Filter by time:
+            <input id="time-slider" type="range" min="-1" max="1440" value="-1">
+            <em id="any-time-label">(any time)</em>
+            <time id="time-display">11:59 PM</time>
+        </label>
+    </header>
+  <div id="map">
+    <svg></svg>
+  </div>
   <!-- Mapbox GL JS JavaScript -->
    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+   <!-- Load D3.js from CDN -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
    <!-- Load your custom map initialization script -->
     <script src="map.js"></script>
 </body>
