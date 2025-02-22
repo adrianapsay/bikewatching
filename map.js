@@ -11,6 +11,11 @@ const map = new mapboxgl.Map({
     maxZoom: 18 // Maximum allowed zoom
 });
 
+let filteredTrips = [];
+let filteredArrivals = new Map();
+let filteredDepartures = new Map();
+let filteredStations = [];
+
 map.on('load', () => { 
     const bikeLaneStyle = {
         'line-width': 5,
@@ -91,7 +96,6 @@ map.on('load', () => {
 
         const csvurl = 'https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv';
         d3.csv(csvurl).then(trips => {
-            console.log('Loaded Traffic Daihta:', trips);
 
             let departures = d3.rollup(
                 trips,
@@ -105,23 +109,21 @@ map.on('load', () => {
                 d => d.end_station_id
             );
 
-            for (let trip of trips) {
+            // for (let trip of trips) {
 
-                trip.started_at = new Date(trip.started_at);
-                trip.ended_at = new Date(trip.ended_at);
-            }
+            //     trip.started_at = new Date(trip.started_at);
+            //     trip.ended_at = new Date(trip.ended_at);
+            // }
 
-            console.log('🚲 Converted Date Objects:', trips);
-            console.log('Departures:', departures);
-            console.log('Arrivals:', arrivals);
+            // console.log('🚲 Converted Date Objects:', trips);
+            // console.log('Departures:', departures);
+            // console.log('Arrivals:', arrivals);
 
             stations = stations.map((station) => {
                 let id = station.short_name;
-
                 station.arrivals = arrivals.get(id) ?? 0;
                 station.departures = departures.get(id) ?? 0;
                 station.totalTraffic = station.arrivals + station.departures;
-
                 return station;
             });
 
@@ -146,7 +148,100 @@ map.on('load', () => {
                       .append('title')
                       .text(`${d.totalTraffic} trips (${d.departures} departures, ${d.arrivals} arrivals)`);
                 });
+            
+            for (let trip of trips) {
 
+            trip.started_at = new Date(trip.started_at);
+            trip.ended_at = new Date(trip.ended_at);
+            }
+
+            let timeFilter = -1;
+            const timeSlider = document.getElementById("time-slider");
+            const selectedTime = document.getElementById("time-display");
+            const anyTimeLabel = document.getElementById("any-time-label");
+
+            function formatTime(minutes) {
+                const date = new Date(0, 0, 0, 0, minutes); // Set hours & minutes
+                return date.toLocaleString("en-US", { timeStyle: "short" }); // Format as HH:MM AM/PM
+            }
+
+            function updateTimeDisplay() {
+                timeFilter = Number(timeSlider.value); // Get slider value
+      
+                if (timeFilter === -1) {
+                  selectedTime.textContent = ""; // Clear time display
+                  anyTimeLabel.style.display = "block"; // Show "(any time)"
+                } else {
+                  selectedTime.textContent = formatTime(timeFilter); // Display formatted time
+                  anyTimeLabel.style.display = "none"; // Hide "(any time)"
+                }
+      
+                // Trigger filtering logic which will be implemented in the next step
+                filterTripsbyTime();
+            }
+
+            timeSlider.addEventListener("input", updateTimeDisplay);
+            updateTimeDisplay();
+
+            function minutesSinceMidnight(date) {
+                return date.getHours() * 60 + date.getMinutes();
+            }
+
+            function filterTripsbyTime() {
+                filteredTrips = timeFilter === -1
+                ? trips
+                : trips.filter((trip) => {
+                    const startedMinutes = minutesSinceMidnight(trip.started_at);
+                    const endedMinutes = minutesSinceMidnight(trip.ended_at);
+                    return (
+                        Math.abs(startedMinutes - timeFilter) <= 60 ||
+                        Math.abs(endedMinutes - timeFilter) <= 60
+                    );
+                });
+
+                filteredDepartures = d3.rollup(
+                    filteredTrips,
+                    (v) => v.length,
+                    (d) => d.start_station_id
+                );
+                filteredArrivals = d3.rollup(
+                    filteredTrips,
+                    (v) => v.length,
+                    (d) => d.end_station_id
+                );
+                filteredStations = stations.map((station) => {
+                    station = { ...station };
+                    let id = station.short_name;
+                    station.arrivals = filteredArrivals.get(id) ?? 0;
+                    station.departures = filteredDepartures.get(id) ?? 0;
+                    station.totalTraffic = station.arrivals + station.departures;
+                    return station;
+                });
+                const radiusScale = d3
+                    .scaleSqrt()
+                    .domain([0, d3.max(stations, (d) => d.totalTraffic)])
+                    .range(timeFilter === -1 ? [0, 25] : [3, 50]);
+                svg
+                    .selectAll("circle")
+                    .data(filteredStations)
+                    .transition()
+                    .duration(500)
+                    .attr("r", (d) => radiusScale(d.totalTraffic || 1))
+                    .attr("fill", "steelblue")
+                    .attr("fill-opacity", 0.8)
+                    .attr("stroke", "white")
+                    .attr("stroke-width", 1)
+                    .each(function (d) {
+                      // Add <title> for browser tooltips
+                      d3.select(this)
+                        .append("title")
+                        .text(
+                          `${d.totalTraffic} trips (${d.departures} departures, ${d.arrivals} arrivals)`
+                        );
+                    });
+                    
+                    console.log(filteredTrips);
+            }
 
         }).catch(error => {
             console.error('Error loading traffic data:', error);
@@ -156,39 +251,3 @@ map.on('load', () => {
       console.error('Error loading JSON:', error);
     });
 });
-
-// Initialize the filter variable
-let timeFilter = -1;
-
-// Select the slider and display elements
-const timeSlider = document.getElementById('time-slider');
-const selectedTime = document.getElementById('time-display');
-const anyTimeLabel = document.getElementById('any-time-label');
-
-// Helper function: Convert minutes since midnight to HH:MM AM/PM
-function formatTime(minutes) {
-    const date = new Date(0, 0, 0, 0, minutes);  // Set hours & minutes
-    return date.toLocaleString('en-US', { timeStyle: 'short' }); // Format as HH:MM AM/PM
-}
-
-// Function to update UI when slider moves
-function updateTimeDisplay() {
-    timeFilter = Number(timeSlider.value);  // Get slider value
-
-    if (timeFilter === -1) {
-        selectedTime.textContent = '';  // Clear time display
-        anyTimeLabel.style.display = 'block';  // Show "(any time)"
-    } else {
-        selectedTime.textContent = formatTime(timeFilter);  // Display formatted time
-        anyTimeLabel.style.display = 'none';  // Hide "(any time)"
-    }
-
-    // 🔥 Future step: Trigger data filtering logic here
-}
-
-// Listen for slider movement and update the UI
-timeSlider.addEventListener('input', updateTimeDisplay);
-
-// Set initial state (ensures correct UI when page loads)
-updateTimeDisplay();
-
