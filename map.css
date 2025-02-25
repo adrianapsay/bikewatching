@@ -1,38 +1,52 @@
 html, body {
     margin: 0;
-    padding: 5;
+    padding: 0; /* Remove padding */
     height: 100%;
     width: 100%;
     display: flex;
-    justify-content: center;
-    /* align-items: center; */
-  }
+    flex-direction: column; /* Stack elements vertically */
+    align-items: center;
+    font-family: system-ui, sans-serif;
+}
+:root {
+    --color-departures: steelblue;
+    --color-arrivals: darkorange;
+}
      
 #map {
-    width: 100%;    /* Adjust width to your desired size */
-    height: 100%;   /* Adjust height to your desired size */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: subtle shadow for effect */
-    border-radius: 8px; /* Optional: rounded corners */
+    width: 100%;
+    height: calc(100% - 100px); /* Reserve space for legend */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 20px; /* Space between map and legend */
 }
-
 #map svg {
-    position: absolute; /* Allows z-index to work */
-    z-index: 1; /* Puts SVG above the map */
-    width: 100%; /* Full map width */
-    height: 100%; /* Full map height */
-    pointer-events: none; /* Prevents blocking map interactions */
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
-
 circle {
     pointer-events: auto;
+    --color: color-mix(
+      in oklch,
+      var(--color-departures) calc(100% * var(--departure-ratio)),
+      var(--color-arrivals)
+    );
+    fill: var(--color);
 }
-
 /* Header styles */
 header {
     display: flex;
     gap: 1em;
-    align-items: baseline;
-    margin-bottom: 1em;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
 }
 
 /* Label styling for proper spacing */
@@ -64,4 +78,34 @@ em {
     text-align: right;
 }
 
-
+/* Legend styles - this is the key part */
+.legend {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the legend */
+    gap: 24px;
+    padding: 10px 20px;
+    width: 100%;
+    height: 60px; /* Give specific height to legend */
+}
+.legend-title {
+    font-weight: 500;
+    margin-right: 8px;
+}
+.legend > div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+.legend > div::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: color-mix(
+        in oklch,
+        var(--color-departures) calc(100% * var(--departure-ratio)),
+        var(--color-arrivals)
+    );
+}
